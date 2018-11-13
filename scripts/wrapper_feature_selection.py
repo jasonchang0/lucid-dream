@@ -20,12 +20,16 @@ style.use('fivethirtyeight')
 os.chdir('../data')
 
 filename = 'fs_master_dataset.csv.gz'
-df = pd.read_csv(filepath_or_buffer=filename, compression='gzip')
+df = pd.read_csv(filepath_or_buffer=filename, compression='gzip', nrows=100000)
+# print(df.head())
 
 df = utils.shuffle(df, random_state=None, n_samples=None)
 
 X = df.drop(['label'], axis=1, inplace=False)
+X = X.astype(float)
+
 y = df[['label']]
+y = y.astype(int)
 
 
 '''
@@ -37,9 +41,9 @@ GaussianNB_classifier = GaussianNB()
 BernoulliNB_classifier = BernoulliNB()
 
 DecisionTree_classifier = DecisionTreeClassifier()
-LogisticRegression_classifier = LogisticRegression(n_jobs=-1)
-SGD_classifier = SGDClassifier(penalty='elasticnet', n_jobs=-1, learning_rate='optimal')
-RandomForest_classifier = RandomForestClassifier(n_estimators=50)
+LogisticRegression_classifier = LogisticRegression()
+SGD_classifier = SGDClassifier(penalty='elasticnet', learning_rate='optimal', n_jobs=-1)
+RandomForest_classifier = RandomForestClassifier(n_estimators=50, n_jobs=-1)
 AdaBoost_classifier = AdaBoostClassifier(n_estimators=50, learning_rate=1.5)
 
 
@@ -58,18 +62,27 @@ combined_classifier = VotingClassifier(estimators=[('MNB', MNB_classifier), ('GN
                                                    ('NuSVC', NuSVC_classifier, ('DTC', DecisionTree_classifier),
                                                     'ABC', AdaBoost_classifier)], voting='hard')
 
-rfecv = RFECV(estimator=combined_classifier, step=1, cv=StratifiedKFold(n_splits=2, shuffle=True),
+rfecv = RFECV(estimator=RandomForest_classifier, step=1, cv=StratifiedKFold(n_splits=2),
               scoring='accuracy', n_jobs=-1)
 
-rfecv.fit(np.array(X).reshape(len(df.index), len(df.columns)), np.array(y))
+X = np.array(X).reshape(len(df.index), len(df.columns) - 1)
+y = np.array(y).reshape(len(df.index), -1)
+
+print(X.shape)
+print(y.shape)
+
+rfecv.fit(X, y)
 print("Optimal number of features : {}".format(rfecv.n_features_))
 
-print(rfecv.support_)
-print(rfecv.ranking_)
+# print(rfecv.support_)
+
+feature_rank = dict(zip(df.columns[1:], rfecv.ranking_))
+feature_rank = sorted(feature_rank.items(), key=lambda kv: kv[1])
+print(np.array(feature_rank)[:, 0])
 
 
 # Plot number of features VS. cross-validation scores
-plt.plot(range(1, len(rfecv.grid_scores_) + 1), rfecv.grid_scores_, linestyle="-", color='b', linewidths=5)
+plt.plot(range(1, len(rfecv.grid_scores_) + 1), rfecv.grid_scores_, linestyle="-", color='b', linewidth=5)
 plt.xlabel("Number of features selected")
 plt.ylabel("Cross validation score (nb of correct classifications)")
 plt.show()
