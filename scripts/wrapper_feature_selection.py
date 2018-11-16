@@ -68,7 +68,7 @@ combined_classifier = VotingClassifier(
                 ('DTC', DecisionTree_classifier),
                 ('ABC', AdaBoost_classifier)], voting='hard', n_jobs=-1)
 
-rfecv = RFECV(estimator=RandomForest_classifier, step=1, cv=StratifiedKFold(n_splits=3),
+rfecv = RFECV(estimator=RandomForest_classifier, step=1, cv=StratifiedKFold(n_splits=2),
               scoring='accuracy', n_jobs=-1)
 
 X = np.array(X).reshape(len(df.index), len(df.columns) - 1)
@@ -100,3 +100,5 @@ plt.plot(range(1, len(rfecv.grid_scores_) + 1), rfecv.grid_scores_, linestyle="-
 plt.xlabel("Number of features selected")
 plt.ylabel("Cross validation score (nb of correct classifications)")
 plt.show()
+
+
